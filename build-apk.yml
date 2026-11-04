@@ -1,0 +1,58 @@
+name: Build Project APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: Application Name
+        required: true
+        default: XAI
+      app_id:
+        description: Application ID
+        required: true
+        default: com.xai.app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prepare Project
+        run: |
+          mkdir -p www
+          cp -r project/. www/
+          npm init -y
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+      - name: Create Android App
+        run: |
+          npx cap init "${{ inputs.app_name }}" "${{ inputs.app_id }}" --web-dir=www
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Project-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          
